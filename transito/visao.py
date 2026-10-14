@@ -347,7 +347,7 @@ def find_signal_events(
         track_id = detection["id_rastreamento"]
         if detection["classe_id"] not in VEHICLE_CLASSES or track_id is None:
             continue
-        x1, _, x2, _ = detection["caixa_xyxy"]
+        x1, y1, x2, y2 = detection["caixa_xyxy"]
         center_x, center_y = (x1 + x2) / 2, (y1 + y2) / 2
         previous = previous_vehicles.get(track_id)
         if previous is not None:
@@ -388,6 +388,109 @@ def find_signal_events(
     return events
 
 
+
+def detect_risk_indicators(observations: dict[int, list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Sinaliza riscos visuais preliminares; nao confirma infracoes ou colisoes."""
+    alerts: list[dict[str, Any]] = []
+    by_frame: dict[int, list[dict[str, Any]]] = {}
+
+    for track_id, values in observations.items():
+        if len(values) < 2:
+            continue
+        speeds = []
+        for previous, current in zip(values, values[1:]):
+            elapsed = current["time"] - previous["time"]
+            if elapsed > 0:
+                dx = current["cx"] - previous["cx"]
+                dy = current["cy"] - previous["cy"]
+                speeds.append((dx * dx + dy * dy) ** 0.5 / elapsed)
+        if speeds and max(speeds) >= 0.75:
+            alerts.append({
+                "tipo": "movimento_aparente_rapido",
+                "descricao": (
+                    f"{values[-1]['classe'].capitalize()} #{track_id} teve deslocamento "
+                    "aparente rapido no quadro; revisar possivel excesso de velocidade."
+                ),
+                "inicio_segundos": round(values[0]["time"], 2),
+                "fim_segundos": round(values[-1]["time"], 2),
+                "id_rastreamento": track_id,
+                "confianca": "baixa",
+            })
+
+        xs = [item["cx"] for item in values]
+        deltas = [b - a for a, b in zip(xs, xs[1:]) if abs(b - a) >= 0.025]
+        reversals = sum(a * b < 0 for a, b in zip(deltas, deltas[1:]))
+        if reversals >= 2 and max(xs) - min(xs) >= 0.12:
+            alerts.append({
+                "tipo": "trajetoria_lateral_irregular",
+                "descricao": (
+                    f"Trajetoria lateral em zigue-zague sugerida para "
+                    f"{values[-1]['classe']} #{track_id}."
+                ),
+                "inicio_segundos": round(values[0]["time"], 2),
+                "fim_segundos": round(values[-1]["time"], 2),
+                "id_rastreamento": track_id,
+                "confianca": "baixa",
+            })
+
+        for item in values:
+            by_frame.setdefault(item["frame"], []).append({**item, "id": track_id})
+
+    close_pairs: dict[tuple[tuple[int, int], str], list[float]] = {}
+    for items in by_frame.values():
+        for index, first in enumerate(items):
+            for second in items[index + 1:]:
+                if first["id"] == second["id"]:
+                    continue
+                ax1, ay1, ax2, ay2 = first["box"]
+                bx1, by1, bx2, by2 = second["box"]
+                intersection = max(0.0, min(ax2, bx2) - max(ax1, bx1)) * max(
+                    0.0, min(ay2, by2) - max(ay1, by1)
+                )
+                min_area = min(
+                    (ax2 - ax1) * (ay2 - ay1),
+                    (bx2 - bx1) * (by2 - by1),
+                )
+                center_distance = (
+                    (first["cx"] - second["cx"]) ** 2
+                    + (first["cy"] - second["cy"]) ** 2
+                ) ** 0.5
+                collision = (
+                    min_area > 0
+                    and intersection / min_area >= 0.2
+                    and center_distance < 0.12
+                )
+                following = False
+                if not collision and abs(first["cx"] - second["cx"]) < 0.07:
+                    front, rear = (
+                        (first, second) if first["cy"] < second["cy"] else (second, first)
+                    )
+                    gap = rear["box"][1] - front["box"][3]
+                    following = -0.015 <= gap <= 0.025
+                pair = tuple(sorted((first["id"], second["id"])))
+                category = "colisao" if collision else "distancia" if following else None
+                if category:
+                    close_pairs.setdefault((pair, category), []).append(first["time"])
+
+    for (pair, category), times in close_pairs.items():
+        if len(times) < 2:
+            continue
+        is_collision = category == "colisao"
+        alerts.append({
+            "tipo": "possivel_colisao" if is_collision else "possivel_distancia_insegura",
+            "descricao": (
+                "Veiculos tiveram caixas sobrepostas em quadros consecutivos; revisar possivel colisao."
+                if is_collision
+                else "Veiculos no mesmo corredor visual apareceram muito proximos; revisar distancia de seguranca."
+            ),
+            "inicio_segundos": round(min(times), 2),
+            "fim_segundos": round(max(times), 2),
+            "ids_rastreamento": list(pair),
+            "confianca": "baixa",
+        })
+    return sorted(alerts, key=lambda item: item["inicio_segundos"])
+
+
 def analyze_video(
     source: Path,
     output: Path,
@@ -421,6 +524,7 @@ def analyze_video(
         raise VisionError(f"Não foi possível criar o vídeo anotado: {output}")
 
     tracks: dict[int, dict[str, Any]] = {}
+    risk_observations: dict[int, list[dict[str, Any]]] = {}
     events: list[dict[str, Any]] = []
     previous_vehicles: dict[int, tuple[float, float, str]] = {}
     recent_signals: dict[tuple[int, int | str], dict[str, Any]] = {}
@@ -467,6 +571,20 @@ def analyze_video(
                 summary["ultima_posicao_no_quadro"] = detection["posicao_no_quadro"]
                 if "faixa_estimada" in detection:
                     summary["ultima_faixa_estimada"] = detection["faixa_estimada"]["posicao"]
+                x1, y1, x2, y2 = detection["caixa_xyxy"]
+                risk_observations.setdefault(track_id, []).append(
+                    {
+                        "classe": detection["classe"],
+                        "time": (frame_number - 1) / fps,
+                        "frame": frame_number,
+                        "cx": ((x1 + x2) / 2) / max(width, 1),
+                        "cy": ((y1 + y2) / 2) / max(height, 1),
+                        "box": (
+                            x1 / max(width, 1), y1 / max(height, 1),
+                            x2 / max(width, 1), y2 / max(height, 1),
+                        ),
+                    }
+                )
             events.extend(
                 find_signal_events(
                     frame_number,
@@ -500,6 +618,8 @@ def analyze_video(
             f"{item['quadros_detectados']} quadro(s); última posição: {position}."
         )
     descriptions.extend(event["descricao"] for event in events)
+    risk_alerts = detect_risk_indicators(risk_observations)
+    descriptions.extend(alert["descricao"] for alert in risk_alerts)
     if not descriptions:
         descriptions = ["Nenhum objeto da lista foi detectado."]
     return {
@@ -511,12 +631,16 @@ def analyze_video(
         "quadros_analisados": frame_number,
         "objetos_rastreados": tracks,
         "eventos": events,
+        "indicadores_de_risco": risk_alerts,
         "descricao": descriptions,
         "limitacoes": [
             "A faixa é estimada por linhas retas e pode estar incorreta; ela não é segmentada.",
             "A passagem por sinal supõe movimento para a parte inferior de um quadro frontal.",
             "O evento é uma hipótese geométrica e não confirma a passagem física pelo sinal.",
             "O modelo não lê a cor do semáforo nem determina preferência ou infração.",
+            "Velocidade real em km/h exige calibração da câmera; deslocamento aparente é apenas triagem.",
+            "Possível colisão e distância insegura são inferências visuais e exigem confirmação humana.",
+            "Câmera em movimento, perspectiva e oclusões podem causar falsos positivos ou deixar eventos passar.",
         ],
     }
 
