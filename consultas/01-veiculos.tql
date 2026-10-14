@@ -1,0 +1,9 @@
+match
+  $v isa veiculo, has codigo $codigo;
+  $v isa! $tipo;
+sort $codigo;
+fetch {
+  "codigo": $v.codigo,
+  "tipo": label($tipo),
+  "modelo": $v.modelo
+};

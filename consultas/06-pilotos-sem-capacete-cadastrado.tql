@@ -1,0 +1,3 @@
+match
+  let $p, $v in pilotos-sem-capacete-cadastrado();
+fetch { "piloto": $p.nome, "moto": $v.modelo };

@@ -1,0 +1,221 @@
+{
+  "01-veiculos": [
+    {
+      "codigo": "V001",
+      "modelo": "Carro de Ana",
+      "tipo": "carro"
+    },
+    {
+      "codigo": "V002",
+      "modelo": "Moto de Bruno",
+      "tipo": "moto"
+    },
+    {
+      "codigo": "V003",
+      "modelo": "Caminhão de Carla",
+      "tipo": "caminhao"
+    },
+    {
+      "codigo": "V004",
+      "modelo": "Moto de Diego",
+      "tipo": "moto"
+    }
+  ],
+  "02-veiculos-com-relacoes": [
+    {
+      "codigo": "V001",
+      "condutores": [
+        {
+          "equipamentos": [],
+          "nome": "Ana",
+          "papel": "motorista"
+        }
+      ],
+      "modelo": "Carro de Ana",
+      "placas": [
+        {
+          "valor": "ABC1D23"
+        }
+      ],
+      "rodas": [
+        {
+          "codigo": "R001",
+          "posicao": "dianteira esquerda"
+        },
+        {
+          "codigo": "R002",
+          "posicao": "dianteira direita"
+        },
+        {
+          "codigo": "R003",
+          "posicao": "traseira esquerda"
+        },
+        {
+          "codigo": "R004",
+          "posicao": "traseira direita"
+        }
+      ],
+      "tipo": "carro"
+    },
+    {
+      "codigo": "V002",
+      "condutores": [
+        {
+          "equipamentos": [
+            {
+              "nome": "Capacete de Bruno",
+              "tipo": "capacete"
+            },
+            {
+              "nome": "Bota de Bruno",
+              "tipo": "calcado"
+            }
+          ],
+          "nome": "Bruno",
+          "papel": "piloto"
+        }
+      ],
+      "modelo": "Moto de Bruno",
+      "placas": [
+        {
+          "valor": "DEF4G56"
+        }
+      ],
+      "rodas": [
+        {
+          "codigo": "R005",
+          "posicao": "dianteira"
+        },
+        {
+          "codigo": "R006",
+          "posicao": "traseira"
+        }
+      ],
+      "tipo": "moto"
+    },
+    {
+      "codigo": "V003",
+      "condutores": [
+        {
+          "equipamentos": [],
+          "nome": "Carla",
+          "papel": "motorista"
+        }
+      ],
+      "modelo": "Caminhão de Carla",
+      "placas": [
+        {
+          "valor": "GHI7J89"
+        }
+      ],
+      "rodas": [
+        {
+          "codigo": "R007",
+          "posicao": "dianteira esquerda"
+        },
+        {
+          "codigo": "R008",
+          "posicao": "dianteira direita"
+        },
+        {
+          "codigo": "R009",
+          "posicao": "traseira esquerda externa"
+        },
+        {
+          "codigo": "R010",
+          "posicao": "traseira esquerda interna"
+        },
+        {
+          "codigo": "R011",
+          "posicao": "traseira direita interna"
+        },
+        {
+          "codigo": "R012",
+          "posicao": "traseira direita externa"
+        }
+      ],
+      "tipo": "caminhao"
+    },
+    {
+      "codigo": "V004",
+      "condutores": [
+        {
+          "equipamentos": [
+            {
+              "nome": "Tênis de Diego",
+              "tipo": "calcado"
+            }
+          ],
+          "nome": "Diego",
+          "papel": "piloto"
+        }
+      ],
+      "modelo": "Moto de Diego",
+      "placas": [
+        {
+          "valor": "JKL0M12"
+        }
+      ],
+      "rodas": [
+        {
+          "codigo": "R013",
+          "posicao": "dianteira"
+        },
+        {
+          "codigo": "R014",
+          "posicao": "traseira"
+        }
+      ],
+      "tipo": "moto"
+    }
+  ],
+  "03-pilotos": [
+    {
+      "moto": "Moto de Bruno",
+      "piloto": "Bruno"
+    },
+    {
+      "moto": "Moto de Diego",
+      "piloto": "Diego"
+    }
+  ],
+  "04-motoristas": [
+    {
+      "motorista": "Ana",
+      "veiculo": "Carro de Ana"
+    },
+    {
+      "motorista": "Carla",
+      "veiculo": "Caminhão de Carla"
+    }
+  ],
+  "05-equipamentos-da-moto": [
+    {
+      "condutor": "Bruno",
+      "equipamento": "Capacete de Bruno",
+      "veiculo": "Moto de Bruno"
+    },
+    {
+      "condutor": "Bruno",
+      "equipamento": "Bota de Bruno",
+      "veiculo": "Moto de Bruno"
+    }
+  ],
+  "06-pilotos-sem-capacete-cadastrado": [
+    {
+      "moto": "Moto de Diego",
+      "piloto": "Diego"
+    }
+  ],
+  "07-tipos-de-veiculo": [
+    {
+      "tipo": "carro"
+    },
+    {
+      "tipo": "moto"
+    },
+    {
+      "tipo": "caminhao"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+match
+  let $p, $v in pilotos();
+fetch { "piloto": $p.nome, "moto": $v.modelo };

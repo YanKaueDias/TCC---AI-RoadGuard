@@ -1,0 +1,40 @@
+with fun papel-do-condutor($v: veiculo) -> string:
+  match
+    { $v isa moto; let $papel = "piloto"; }
+    or { $v isa carro; let $papel = "motorista"; }
+    or { $v isa caminhao; let $papel = "motorista"; };
+  return first $papel;
+
+match
+  $v isa veiculo, has codigo $codigo;
+  $v isa! $tipo;
+sort $codigo;
+fetch {
+  "codigo": $v.codigo,
+  "tipo": label($tipo),
+  "modelo": $v.modelo,
+  "placas": [
+    match
+      identificacao (identificado: $v, identificador: $placa);
+    fetch { "valor": $placa.valor-placa };
+  ],
+  "rodas": [
+    match
+      composicao (todo: $v, parte: $roda);
+    fetch { "codigo": $roda.codigo, "posicao": $roda.posicao };
+  ],
+  "condutores": [
+    match
+      conducao (condutor: $p, veiculo-conduzido: $v);
+    fetch {
+      "nome": $p.nome,
+      "papel": papel-do-condutor($v),
+      "equipamentos": [
+        match
+          uso-equipamento (usuario: $p, item: $e);
+          $e isa! $tipo-equipamento;
+        fetch { "nome": $e.nome, "tipo": label($tipo-equipamento) };
+      ]
+    };
+  ]
+};

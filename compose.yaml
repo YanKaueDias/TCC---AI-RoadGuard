@@ -1,0 +1,11 @@
+name: base-conhecimento-transito
+services:
+  typedb:
+    image: typedb/typedb:3.13.6
+    ports:
+      - "127.0.0.1:11729:1729"
+      - "127.0.0.1:18000:8000"
+    volumes:
+      - dados-transito:/var/lib/typedb/data
+volumes:
+  dados-transito:

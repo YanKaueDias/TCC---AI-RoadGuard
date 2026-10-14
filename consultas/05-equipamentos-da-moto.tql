@@ -1,0 +1,8 @@
+match
+  $v isa veiculo, has codigo "V002";
+  let $p, $e in equipamentos-do-veiculo($v);
+fetch {
+  "veiculo": $v.modelo,
+  "condutor": $p.nome,
+  "equipamento": $e.nome
+};

@@ -1,0 +1,77 @@
+define
+attribute codigo, value string;
+attribute nome, value string;
+attribute modelo, value string;
+attribute valor-placa, value string;
+attribute posicao, value string;
+
+entity veiculo @abstract,
+  owns codigo @key,
+  owns modelo @card(1),
+  plays composicao:todo,
+  plays identificacao:identificado,
+  plays conducao:veiculo-conduzido;
+entity carro sub veiculo;
+entity moto sub veiculo;
+entity caminhao sub veiculo;
+
+entity roda,
+  owns codigo @key,
+  owns posicao @card(1),
+  plays composicao:parte;
+entity placa,
+  owns valor-placa @key,
+  plays identificacao:identificador;
+entity pessoa,
+  owns codigo @key,
+  owns nome @card(1),
+  plays conducao:condutor,
+  plays uso-equipamento:usuario;
+entity equipamento @abstract,
+  owns codigo @key,
+  owns nome @card(1),
+  plays uso-equipamento:item;
+entity capacete sub equipamento;
+entity calcado sub equipamento;
+
+relation composicao,
+  relates todo @card(1),
+  relates parte @card(1);
+relation identificacao,
+  relates identificado @card(1),
+  relates identificador @card(1);
+relation conducao,
+  relates condutor @card(1),
+  relates veiculo-conduzido @card(1);
+relation uso-equipamento,
+  relates usuario @card(1),
+  relates item @card(1);
+
+fun pilotos() -> { pessoa, moto }:
+  match
+    $p isa pessoa;
+    $v isa moto;
+    conducao (condutor: $p, veiculo-conduzido: $v);
+  return { $p, $v };
+
+fun motoristas() -> { pessoa, veiculo }:
+  match
+    $p isa pessoa;
+    { $v isa carro; } or { $v isa caminhao; };
+    conducao (condutor: $p, veiculo-conduzido: $v);
+  return { $p, $v };
+
+fun equipamentos-do-veiculo($v: veiculo) -> { pessoa, equipamento }:
+  match
+    conducao (condutor: $p, veiculo-conduzido: $v);
+    uso-equipamento (usuario: $p, item: $e);
+  return { $p, $e };
+
+fun pilotos-sem-capacete-cadastrado() -> { pessoa, moto }:
+  match
+    let $p, $v in pilotos();
+    not {
+      $c isa capacete;
+      uso-equipamento (usuario: $p, item: $c);
+    };
+  return { $p, $v };
